@@ -4,24 +4,22 @@
     while ( $i <= 100 ) {
 
         if (( $i % 3 == 0 ) && ( $i % 5 == 0 )) {
-            echo "foobar";
+            fwrite(STDOUT, "foobar");
         }
         elseif ( $i % 3 == 0 ) {
-            echo "foo";
+            fwrite(STDOUT, "foo");
         }
         elseif ( $i % 5 == 0) {
-            echo "bar";
+            fwrite(STDOUT, "bar");
         }
         else {
-            echo $i;
+            fwrite(STDOUT, $i);
         }
 
         if ($i < 100) {
-            echo ", ";
+            fwrite(STDOUT, ", ");
         }
         $i++;
     }
-
-
 
 ?>
