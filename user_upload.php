@@ -1,11 +1,78 @@
 <?php 
-
-    $GLOBALS['db_host'] = "localhost"; 
+ 
     $GLOBALS['db_name'] = "mysql";
-    $GLOBALS['user'] = "username";
-    $GLOBALS['pass'] = "password";
 
-    $csvFile = 'users.csv';
+    include ("Console/Getopt.php");
+
+    $cg = new Console_Getopt();
+
+    // define available options
+    $shortOptions = "u:p:h:";
+    $longOptions = array("file==", "create_table==", "dry_run==", "help==");
+    
+
+    // read arguments from command line
+    $args = $cg->readPHPArgv();
+    $ret = $cg->getopt($args, $shortOptions, $longOptions);
+
+    // check to see if the options are valid
+    if (PEAR::isError($ret)) {
+        die ("Invalid options, use --help to see valid options" . $ret->getMessage() . "\n");
+    }
+
+
+    $opts = $ret[0];
+
+    if (sizeof($opts) > 0) {
+   
+        foreach ($opts as $o) {
+
+            switch($o[0]) {
+
+                case '--file':
+                    
+                    $csvFile = $o[1];
+                    break;
+
+                case '--dry_run':
+
+                    break;
+
+                case '--create_table':
+
+                    break;
+                
+                case 'u':
+
+                    $GLOBALS['user'] = $o[1];
+                    break;
+
+                case 'p':
+
+                    $GLOBALS['pass'] = $o[1];
+                    break;
+                
+                case 'h':
+
+                    $GLOBALS['db_host'] = $o[1];
+                    break;
+                
+                case '--help':
+
+                    fwrite(STDOUT, "Help Screen:\n");
+                    fwrite(STDOUT, "The following options are available: \n");
+                    fwrite(STDOUT, "--file [csv file name] - this is the name of the csv file to be parsed \n");
+                    fwrite(STDOUT, "--create_table - this will cause the MySQL users table to be built (and no further action will be taken)");
+                    fwrite(STDOUT, "--dry_run - this will be used with the --file directive in the instance that we want to run the script but not insert into the DB. All other functions will be executed, but the database won't be altered. \n");
+                    fwrite(STDOUT, "-u - MySQL username \n");
+                    fwrite(STDOUT, "-p - MySQL password \n");
+                    fwrite(STDOUT, "-h - MySQL host \n");
+                    fwrite(STDOUT, "--help - show this help message \n");
+
+            }
+            
+        }
+    }
 
     // function to read csv file and store values in an array
     function readCsv($csv) {
