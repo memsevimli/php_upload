@@ -2,8 +2,8 @@
 
     $GLOBALS['db_host'] = "localhost"; 
     $GLOBALS['db_name'] = "mysql";
-    $GLOBALS['user'] = "root";
-    $GLOBALS['pass'] = "mubuntuPass11";
+    $GLOBALS['user'] = "username";
+    $GLOBALS['pass'] = "password";
 
     $csvFile = 'users.csv';
 
