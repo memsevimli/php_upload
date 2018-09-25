@@ -1,17 +1,17 @@
 <?php 
  
-    $GLOBALS['db_name'] = "mysql";
-
     include ("Console/Getopt.php");
+
+    $GLOBALS['db_name'] = "mysql";
+    $dry = 0;
 
     $cg = new Console_Getopt();
 
-    // define available options
+    // define the available command line options
     $shortOptions = "u:p:h:";
     $longOptions = array("file==", "create_table==", "dry_run==", "help==");
     
-
-    // read arguments from command line
+    // read the options from the command line
     $args = $cg->readPHPArgv();
     $ret = $cg->getopt($args, $shortOptions, $longOptions);
 
@@ -20,46 +20,42 @@
         die ("Invalid options, use --help to see valid options" . $ret->getMessage() . "\n");
     }
 
-
     $opts = $ret[0];
 
+    // handle command line options
     if (sizeof($opts) > 0) {
    
         foreach ($opts as $o) {
 
             switch($o[0]) {
 
-                case '--file':
-                    
+                case '--file':                   
                     $csvFile = $o[1];
                     break;
 
                 case '--dry_run':
-
+                    $dry = 1;
                     break;
 
                 case '--create_table':
-
+                    create_table();
+                    goto end;
                     break;
                 
                 case 'u':
-
                     $GLOBALS['user'] = $o[1];
                     break;
 
                 case 'p':
-
                     $GLOBALS['pass'] = $o[1];
                     break;
                 
                 case 'h':
-
                     $GLOBALS['db_host'] = $o[1];
                     break;
                 
                 case '--help':
-
-                    fwrite(STDOUT, "Help Screen:\n");
+                    fwrite(STDOUT, "Help Screen:\n\n");
                     fwrite(STDOUT, "The following options are available: \n");
                     fwrite(STDOUT, "--file [csv file name] - this is the name of the csv file to be parsed \n");
                     fwrite(STDOUT, "--create_table - this will cause the MySQL users table to be built (and no further action will be taken)");
@@ -68,12 +64,14 @@
                     fwrite(STDOUT, "-p - MySQL password \n");
                     fwrite(STDOUT, "-h - MySQL host \n");
                     fwrite(STDOUT, "--help - show this help message \n");
+                    goto end;
+                    break;
 
             }
             
         }
     }
-
+    
     // function to read csv file and store values in an array
     function readCsv($csv) {
         $userFile = fopen($csv, 'r') or die("Can't open csv file.");
@@ -85,31 +83,6 @@
         fclose($userFile) or die("Can't close file.");
         
         return $userArray;
-    }
-
-    // Database connection
-    $connection = mysqli_connect($db_host, $user, $pass, $db_name);
-
-    $users = readCsv($csvFile);
-
-    foreach ($users as $u) {
-
-        $firstName = ucwords(strtolower(trim($u[0])));
-        $lastName = ucwords(strtolower(trim($u[1])));
-        $email = strtolower(trim($u[2]));
-        
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            fwrite(STDOUT, $email . " is not in an acceptable format. Record not added to database.\n");
-        }
-        else {
-         
-            $firstName = mysqli_real_escape_string($connection, $firstName);
-            $lastName = mysqli_real_escape_string($connection, $lastName);
-            $email = mysqli_real_escape_string($connection, $email);
-
-            insertdb($firstName, $lastName, $email);
-        }
-        
     }
 
     // function to insert records into database
@@ -127,8 +100,54 @@
         if (!mysqli_query($connection, $query)) {
             fwrite(STDOUT, "Insert Failed, " . mysqli_error($connection) . "\n");
         }
+    }
 
+    // function to create a new users table
+    function create_table() {
+
+        $db_host = $GLOBALS['db_host'];
+        $db_name = $GLOBALS['db_name'];
+        $user = $GLOBALS['user'];
+        $pass = $GLOBALS['pass'];
+
+        $connection = mysqli_connect($db_host, $user, $pass, $db_name);
+
+        $query = "CREATE TABLE users (id INT(6) AUTO_INCREMENT PRIMARY KEY, name VARCHAR(30), surname VARCHAR(30), email VARCHAR(50) UNIQUE)";
+    
+        if (!mysqli_query($connection, $query)) {
+            fwrite(STDOUT, "Table could not be created, " . mysqli_error($connection) . "\n");
+        }
+        else {
+            fwrite(STDOUT, "Table was created.\n");
+        }
+
+        $connection->close();
 
     }
 
+    // main program and validations
+    $connection = mysqli_connect($db_host, $user, $pass, $db_name);
+
+    $users = readCsv($csvFile);
+
+    foreach ($users as $u) {
+
+        $firstName = ucwords(strtolower(trim($u[0])));
+        $lastName = ucwords(strtolower(trim($u[1])));
+        $email = strtolower(trim($u[2]));
+     
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            fwrite(STDOUT, $email . " is not in an acceptable format. Record not added to database.\n");
+        }
+        elseif ($dry != 1) {
+            $firstName = mysqli_real_escape_string($connection, $firstName);
+            $lastName = mysqli_real_escape_string($connection, $lastName);
+            $email = mysqli_real_escape_string($connection, $email);
+            insertdb($firstName, $lastName, $email);
+        }
+        
+    }  
+    $connection->close(); 
+    
+    end:
 ?>
