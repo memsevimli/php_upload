@@ -1,9 +1,76 @@
 <?php 
- 
+
     include ("Console/Getopt.php");
 
-    $GLOBALS['db_name'] = "mysql";
+    // initialise dry run flag to 0
     $dry = 0;
+
+    // set database name
+    $dbname = "mysql";
+    
+    class database {
+
+        public function __construct(
+            $dbname, 
+            $username, 
+            $password, 
+            $hostname,
+            $dry
+        ) {
+            $this->name = $dbname;
+            $this->user = $username;
+            $this->pass = $password;
+            $this->host = $hostname;
+            $this->dry = $dry;
+            $this->connect();
+        }
+    
+        protected function connect() {
+            $this->connection = mysqli_connect($this->host, $this->user, $this->pass, $this->name);
+        }
+    
+        // method to create a new users table
+        public function createTable() {
+            
+            $query = "CREATE TABLE users (id INT(6) AUTO_INCREMENT PRIMARY KEY, name VARCHAR(30), surname VARCHAR(30), email VARCHAR(50) UNIQUE)";
+            
+            if (!mysqli_query($this->connection, $query)) {
+                fwrite(STDOUT, "Table could not be created, " . mysqli_error($this->connection) . "\n");
+            }
+            else {
+                fwrite(STDOUT, "Table was created.\n");
+            }
+        }
+    
+        // method to upload users into the database
+        public function createUsers(array $users) {
+            
+            foreach ($users as $u) {
+        
+                $firstName = ucwords(strtolower(trim($u[0])));
+                $lastName = ucwords(strtolower(trim($u[1])));
+                $email = strtolower(trim($u[2]));
+            
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    
+                    fwrite(STDOUT, $email . " is not in an acceptable format. Record not added to database.\n");
+                
+                } else if ($this->dry != 1) {
+                    
+                    $firstName = mysqli_real_escape_string($this->connection, $firstName);
+                    $lastName = mysqli_real_escape_string($this->connection, $lastName);
+                    $email = mysqli_real_escape_string($this->connection, $email);
+                    
+                    $query = "INSERT INTO users (name, surname, email) VALUES ('$firstName', '$lastName', '$email')";
+            
+                    if (!mysqli_query($this->connection, $query)) {
+                        fwrite(STDOUT, "Insert Failed, " . mysqli_error($this->connection) . "\n");
+                    }
+                }  
+            }
+        }
+    }
+
 
     $cg = new Console_Getopt();
 
@@ -35,23 +102,29 @@
 
                 case '--dry_run':
                     $dry = 1;
+                    // $dbname = "mysql";
+                    $database = new database($dbname, $username, $password, $hostname, $dry);
+                    $users = readCsv($csvFile);
+                    $database->createUsers($users, $dry);
                     break;
 
                 case '--create_table':
-                    create_table();
+                    // $dbname = "mysql";
+                    $database = new database($dbname, $username, $password, $hostname, $dry);
+                    $database->createTable();
                     goto end;
                     break;
                 
                 case 'u':
-                    $GLOBALS['user'] = $o[1];
+                    $username = $o[1];
                     break;
 
                 case 'p':
-                    $GLOBALS['pass'] = $o[1];
+                    $password = $o[1];
                     break;
                 
                 case 'h':
-                    $GLOBALS['db_host'] = $o[1];
+                    $hostname = $o[1];
                     break;
                 
                 case '--help':
@@ -85,69 +158,15 @@
         return $userArray;
     }
 
-    // function to insert records into database
-    function insertdb($firstName, $lastName, $email) {
-
-        $db_host = $GLOBALS['db_host'];
-        $db_name = $GLOBALS['db_name'];
-        $user = $GLOBALS['user'];
-        $pass = $GLOBALS['pass'];
-
-        $connection = mysqli_connect($db_host, $user, $pass, $db_name);
-
-        $query = "INSERT INTO users (name, surname, email) VALUES ('$firstName', '$lastName', '$email')";
-    
-        if (!mysqli_query($connection, $query)) {
-            fwrite(STDOUT, "Insert Failed, " . mysqli_error($connection) . "\n");
-        }
-    }
-
-    // function to create a new users table
-    function create_table() {
-
-        $db_host = $GLOBALS['db_host'];
-        $db_name = $GLOBALS['db_name'];
-        $user = $GLOBALS['user'];
-        $pass = $GLOBALS['pass'];
-
-        $connection = mysqli_connect($db_host, $user, $pass, $db_name);
-
-        $query = "CREATE TABLE users (id INT(6) AUTO_INCREMENT PRIMARY KEY, name VARCHAR(30), surname VARCHAR(30), email VARCHAR(50) UNIQUE)";
-    
-        if (!mysqli_query($connection, $query)) {
-            fwrite(STDOUT, "Table could not be created, " . mysqli_error($connection) . "\n");
-        }
-        else {
-            fwrite(STDOUT, "Table was created.\n");
-        }
-
-        $connection->close();
-
-    }
-
-    // main program and validations
-    $connection = mysqli_connect($db_host, $user, $pass, $db_name);
-
-    $users = readCsv($csvFile);
-
-    foreach ($users as $u) {
-
-        $firstName = ucwords(strtolower(trim($u[0])));
-        $lastName = ucwords(strtolower(trim($u[1])));
-        $email = strtolower(trim($u[2]));
-     
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            fwrite(STDOUT, $email . " is not in an acceptable format. Record not added to database.\n");
-        }
-        elseif ($dry != 1) {
-            $firstName = mysqli_real_escape_string($connection, $firstName);
-            $lastName = mysqli_real_escape_string($connection, $lastName);
-            $email = mysqli_real_escape_string($connection, $email);
-            insertdb($firstName, $lastName, $email);
-        }
+    // main program to insert users into database, runs if dry run is not selected as an option
+    if ($dry != 1) {
         
-    }  
-    $connection->close(); 
+        $dbname = "mysql";
+        $database = new database($dbname, $username, $password, $hostname, $dry);
+        $users = readCsv($csvFile);
+        $database->createUsers($users, $dry);
+
+    }
     
     end:
 ?>
